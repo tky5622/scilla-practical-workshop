@@ -5,7 +5,7 @@ import ListUtils BoolUtils
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-library Jyanken
+library JyankenGame
 
 let one_msg =
   fun (msg : Message) =>
@@ -62,8 +62,6 @@ let checkDraw =
       ret
 
 (* player==0&&randam==1 *)
-(* player==1&&randam==2 *)
-(* player==2&&randam==0 *)
 let win1 =
   fun (p : Uint256) =>
   fun (r : Uint256) =>
@@ -71,6 +69,7 @@ let win1 =
       let rd = builtin eq r scissors in
       andb pl rd
 
+(* player==1&&randam==2 *)
 let win2 =
   fun (p : Uint256) =>
   fun (r : Uint256) =>
@@ -78,6 +77,7 @@ let win2 =
       let rd = builtin eq r paper in
       andb pl rd
 
+(* player==2&&randam==0 *)
 let win3 =
   fun (p : Uint256) =>
   fun (r : Uint256) =>
@@ -115,13 +115,14 @@ let error_hands_code  = Uint32 9
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
-contract Jyanken
+contract JyankenGame
 
 (owner    : ByStr20)
 
 field previousResult : Int32 = Int32 0
+field previousHand : Uint256 = Uint256 0
 
-transition playJyanken (_player : Uint256, _enemy: Uint256)
+transition playJyanken (_player : Uint256)
 
     (* error validation *)
     is_p1Hands_ok = check_hands _player;
@@ -133,35 +134,56 @@ transition playJyanken (_player : Uint256, _enemy: Uint256)
         event e;
         send msgs
     | True =>
-        isDraw = checkDraw _player _enemy;
-        match isDraw with
-        | True =>
-            rs = Int32 0;
-            msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+        (*Add generate random hands*)
+        (*INSERT CODE HERE*)
+        ph <- previousHand;
+        b <- & BLOCKNUMBER;
+        bph = builtin badd b ph;
+        h1 = builtin sha256hash bph;
+        h2 = builtin sha256hash _sender;
+        dis = builtin dist h1 h2;
+        uintDis = builtin to_uint256 dis;
+        match uintDis with
+        | None =>
+            msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : error_hands_code};
             msgs = one_msg msg;
-            previousResult := rs;
-            e = {_eventname : "Result is draw!"; _pH : _player; _eH : _enemy};
-            event e;
             send msgs
-        | False =>
-            isWin = checkWin _player _enemy;
-            match isWin with
-            | False =>
-                rs = Int32 2;
-                msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
-                msgs = one_msg msg;
-                previousResult := rs;
-                e = {_eventname : "Result is lose!"; _pH : _player; _eH : _enemy};
-                event e;
-                send msgs
+        | Some hd =>
+            j = Uint256 3;
+            randomHand = builtin rem hd j;
+            isDraw = checkDraw _player randomHand;
+            match isDraw with
             | True =>
-                rs = Int32 1;
+                rs = Int32 0;
                 msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
                 msgs = one_msg msg;
                 previousResult := rs;
-                e = {_eventname : "Result is win!"; _pH : _player; _eH : _enemy};
+                previousHand := randomHand;
+                e = {_eventname : "Result is draw!"; _pH : _player; _rH : randomHand};
                 event e;
                 send msgs
+            | False =>
+                isWin = checkWin _player randomHand;
+                match isWin with
+                | False =>
+                    rs = Int32 2;
+                    msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+                    msgs = one_msg msg;
+                    previousResult := rs;
+                    previousHand := randomHand;
+                    e = {_eventname : "Result is lose!"; _pH : _player; _rH : randomHand};
+                    event e;
+                    send msgs
+                | True =>
+                    rs = Int32 1;
+                    msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+                    msgs = one_msg msg;
+                    previousResult := rs;
+                    previousHand := randomHand;
+                    e = {_eventname : "Result is win!"; _pH : _player; _rH : randomHand};
+                    event e;
+                    send msgs
+                end
             end
         end
     end

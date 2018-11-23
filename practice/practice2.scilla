@@ -1,0 +1,180 @@
+(* Jyanken contract *)
+
+import ListUtils BoolUtils
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+library JyankenGame
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+(* 0..rock, 1..scissors, 2..paper *)
+let rock = Uint256 0
+let scissors = Uint256 1
+let paper = Uint256 2
+
+let hands_rock =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr rock in
+      ret
+
+let hands_scissors =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr scissors in
+      ret
+
+let hands_paper =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr paper in
+      ret
+
+let check_hands =
+  fun (jnr : Uint256) =>
+    let rc = hands_rock jnr in
+    match rc with
+    | True =>
+        True
+    | False =>
+        let sc = hands_scissors jnr in
+        match sc with
+        | True =>
+            True
+        | False =>
+            let pp = hands_paper jnr in
+            match pp with
+            | True =>
+                True
+            | False =>
+                False
+            end
+        end
+    end
+
+(* hostHand == guestHand *)
+let checkDraw =
+  fun (p1 : Uint256) =>
+  fun (p2 : Uint256) =>
+      let ret = builtin eq p1 p2 in
+      ret
+
+(* player==0&&randam==1 *)
+let win1 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p rock in
+      let rd = builtin eq r scissors in
+      andb pl rd
+
+(* player==1&&randam==2 *)
+let win2 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p scissors in
+      let rd = builtin eq r paper in
+      andb pl rd
+
+(* player==2&&randam==0 *)
+let win3 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p paper in
+      let rd = builtin eq r rock in
+      andb pl rd
+
+let checkWin =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+    let w1 = win1 p r in
+    match w1 with
+    | True =>
+        True
+    | False =>
+        let w2 = win2 p r in
+        match w2 with
+        | True =>
+            True
+        | False =>
+            let w3 = win3 p r in
+            match w3 with
+            | True =>
+                True
+            | False =>
+                False
+            end
+        end
+    end
+
+(* error code *)
+let error_hands_code  = Uint32 9
+
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+contract JyankenGame
+
+(owner    : ByStr20)
+
+field previousResult : Int32 = Int32 0
+field previousHand : Uint256 = Uint256 0
+
+transition playJyanken (_player : Uint256)
+
+    (* error validation *)
+    is_p1Hands_ok = check_hands _player;
+    match is_p1Hands_ok with
+    | False =>
+        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : error_hands_code};
+        msgs = one_msg msg;
+        e = {_eventname : "bad hand!"; _pH : _player};
+        event e;
+        send msgs
+    | True =>
+
+        (*Add generate random hands*)
+        (* e.g. solidity... uint256(block.blockhash(block.number-1)) % 3 *)
+        (* e.g. scilla... hash to uint *)
+        (* builtin dist h1 h2: The distance between ByStr32 h1 and ByStr32 h2. Returns Uint25 *)
+        (* builtin sha256hash x : The SHA256 hash of value of x of type Any. Returns ByStr32 *)
+        (*INSERT CODE HERE*)
+
+        isDraw = checkDraw _player randomHand;
+        match isDraw with
+        | True =>
+            rs = Int32 0;
+            msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+            msgs = one_msg msg;
+            previousResult := rs;
+            previousHand := randomHand;
+            e = {_eventname : "Result is draw!"; _pH : _player; _rH : randomHand};
+            event e;
+            send msgs
+        | False =>
+            isWin = checkWin _player randomHand;
+            match isWin with
+            | False =>
+                rs = Int32 2;
+                msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+                msgs = one_msg msg;
+                previousResult := rs;
+                previousHand := randomHand;
+                e = {_eventname : "Result is lose!"; _pH : _player; _rH : randomHand};
+                event e;
+                send msgs
+            | True =>
+                rs = Int32 1;
+                msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+                msgs = one_msg msg;
+                previousResult := rs;
+                previousHand := randomHand;
+                e = {_eventname : "Result is win!"; _pH : _player; _rH : randomHand};
+                event e;
+                send msgs
+            end
+        end
+    end
+end

@@ -1,0 +1,146 @@
+(* Jyanken contract *)
+
+import ListUtils BoolUtils
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+library JyankenGame
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+(* 0..rock, 1..scissors, 2..paper *)
+let rock = Uint256 0
+let scissors = Uint256 1
+let paper = Uint256 2
+
+let hands_rock =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr rock in
+      ret
+
+let hands_scissors =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr scissors in
+      ret
+
+let hands_paper =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr paper in
+      ret
+
+let check_hands =
+  fun (jnr : Uint256) =>
+    let rc = hands_rock jnr in
+    match rc with
+    | True =>
+        True
+    | False =>
+        let sc = hands_scissors jnr in
+        match sc with
+        | True =>
+            True
+        | False =>
+            let pp = hands_paper jnr in
+            match pp with
+            | True =>
+                True
+            | False =>
+                False
+            end
+        end
+    end
+
+(* error code *)
+let error_hands_code  = Uint32 9
+let update_contract_address = Uint32 8
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+contract JyankenGame
+
+(owner    : ByStr20)
+
+field previousResult : Int32 = Int32 0
+field previousHand : Uint256 = Uint256 0
+
+field contractAddress : Option ByStr20 = None {ByStr20}
+
+(*Add set call contract address *)
+(*INSERT CODE HERE*)
+transition setContractAddress (_address : ByStr20)
+    r <- contractAddress;
+    match r with
+    | Some v =>
+        option_contractAddress = Some {ByStr20} _address;
+        contractAddress := option_contractAddress;
+        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : update_contract_address};
+        msgs = one_msg msg;
+        send msgs
+    | None =>
+        option_contractAddress = Some {ByStr20} _address;
+        contractAddress := option_contractAddress;
+        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : update_contract_address};
+        msgs = one_msg msg;
+        send msgs
+    end
+end
+
+transition playJyanken (_player : Uint256)
+
+    (* error validation *)
+    is_p1Hands_ok = check_hands _player;
+    match is_p1Hands_ok with
+    | False =>
+        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : error_hands_code};
+        msgs = one_msg msg;
+        e = {_eventname : "bad hand!"; _pH : _player};
+        event e;
+        send msgs
+    | True =>
+        ph <- previousHand;
+        b <- & BLOCKNUMBER;
+        bph = builtin badd b ph;
+        h1 = builtin sha256hash bph;
+        h2 = builtin sha256hash _sender;
+        dis = builtin dist h1 h2;
+        uintDis = builtin to_uint256 dis;
+        match uintDis with
+        | None =>
+            msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : error_hands_code};
+            msgs = one_msg msg;
+            send msgs
+        | Some hd =>
+            j = Uint256 3;
+            randomHand = builtin rem hd j;
+
+            (*Add call contract transition *)
+            (*INSERT CODE HERE*)
+            ca <- contractAddress;
+            match ca with
+            | Some v =>
+                msg = {_tag : "JyankenJudge"; _recipient : v; _amount : Uint128 0; pH : _player; rH : randomHand};
+                msgs = one_msg msg;
+                send msgs
+            | None =>
+                e = { _eventname : "ContractStatus"; msg : "Contract address is nothing" };
+                event e
+            end
+        end
+    end
+end
+
+(*Add callback transition *)
+(*INSERT CODE HERE*)
+transition setResult (_result : Int32)
+    previousResult := _result;
+    rs <- previousResult ;
+    msg = {_tag : "main"; _recipient : _sender; _amount : Uint128 0; result :rs};
+    msgs = one_msg msg;
+    send msgs
+end
+

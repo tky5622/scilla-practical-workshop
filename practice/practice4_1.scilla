@@ -5,7 +5,7 @@ import ListUtils BoolUtils
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-library Jyanken
+library JyankenGame
 
 let one_msg =
   fun (msg : Message) =>
@@ -61,31 +61,18 @@ let update_contract_address = Uint32 8
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
-contract Jyanken
+contract JyankenGame
 
 (owner    : ByStr20)
 
-field contractAddress : Option ByStr20 = None {ByStr20}
 field previousResult : Int32 = Int32 0
 field previousHand : Uint256 = Uint256 0
 
-transition setContractAddress (_address : ByStr20)
-    r <- contractAddress;
-    match r with
-    | Some v =>
-        option_contractAddress = Some {ByStr20} _address;
-        contractAddress := option_contractAddress;
-        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : update_contract_address};
-        msgs = one_msg msg;
-        send msgs
-    | None =>
-        option_contractAddress = Some {ByStr20} _address;
-        contractAddress := option_contractAddress;
-        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : update_contract_address};
-        msgs = one_msg msg;
-        send msgs
-    end
-end
+field contractAddress : Option ByStr20 = None {ByStr20}
+
+(*Add set call contract address *)
+(*INSERT CODE HERE*)
+
 
 transition playJyanken (_player : Uint256)
 
@@ -114,25 +101,18 @@ transition playJyanken (_player : Uint256)
         | Some hd =>
             j = Uint256 3;
             randomHand = builtin rem hd j;
-            ca <- contractAddress;
-            match ca with
-            | Some v =>
-                msg = {_tag : "JyankenJudge"; _recipient : v; _amount : Uint128 0; pH : _player; rH : randomHand};
-                msgs = one_msg msg;
-                send msgs
-            | None =>
-                e = { _eventname : "ContractStatus"; msg : "Contract address is nothing" };
-                event e
-            end
+
+            (*Add call contract transition *)
+            (*INSERT CODE HERE*)
+
+
         end
     end
 end
 
+(*Add callback transition *)
+(*INSERT CODE HERE*)
 transition setResult (_result : Int32)
-    previousResult := _result;
-    rs <- previousResult ;
-    msg = {_tag : "main"; _recipient : _sender; _amount : Uint128 0; result :rs};
-    msgs = one_msg msg;
-    send msgs
+
 end
 

@@ -90,26 +90,9 @@ transition JyankenJudge (_player : Uint256, _enemy : Uint256)
     previousPlayerHand := _player;
     previousEnemyHand := _enemy;
 
-    isDraw = checkDraw _player _enemy;
-    match isDraw with
-    | True =>
-        rs = Int32 0;
-        msg = {_tag : "setResult"; _recipient : _sender; _amount : Uint128 0; result : rs};
-        msgs = one_msg msg;
-        send msgs
-    | False =>
-        isWin = checkWin _player _enemy;
-        match isWin with
-        | False =>
-            rs = Int32 2;
-            msg = {_tag : "setResult"; _recipient : _sender; _amount : Uint128 0; result : rs};
-            msgs = one_msg msg;
-            send msgs
-        | True =>
-            rs = Int32 1;
-            msg = {_tag : "setResult"; _recipient : _sender; _amount : Uint128 0; result : rs};
-            msgs = one_msg msg;
-            send msgs
-        end
-    end
+    
+    (* Add call of winning / losing check & callback *)
+    (*INSERT CODE HERE*)
+    
+
 end

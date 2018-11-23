@@ -1,0 +1,117 @@
+(* Jyanken contract *)
+
+import ListUtils BoolUtils
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+library Judge
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+(* 0..rock, 1..scissors, 2..paper *)
+let rock = Uint256 0
+let scissors = Uint256 1
+let paper = Uint256 2
+
+(* hostHand == guestHand *)
+let checkDraw =
+  fun (p1 : Uint256) =>
+  fun (p2 : Uint256) =>
+      let ret = builtin eq p1 p2 in
+      ret
+
+(* player==0&&randam==1 *)
+(* player==1&&randam==2 *)
+(* player==2&&randam==0 *)
+let win1 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p rock in
+      let rd = builtin eq r scissors in
+      andb pl rd
+
+let win2 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p scissors in
+      let rd = builtin eq r paper in
+      andb pl rd
+
+let win3 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p paper in
+      let rd = builtin eq r rock in
+      andb pl rd
+
+let checkWin =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+    let w1 = win1 p r in
+    match w1 with
+    | True =>
+        True
+    | False =>
+        let w2 = win2 p r in
+        match w2 with
+        | True =>
+            True
+        | False =>
+            let w3 = win3 p r in
+            match w3 with
+            | True =>
+                True
+            | False =>
+                False
+            end
+        end
+    end
+
+(* error code *)
+let error_hands_code  = Uint32 9
+
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+contract Judge
+
+(owner    : ByStr20)
+
+field previousPlayerHand : Uint256 = Uint256 0
+field previousEnemyHand : Uint256 = Uint256 0
+
+transition JyankenJudge (_player : Uint256, _enemy : Uint256)
+
+    previousPlayerHand := _player;
+    previousEnemyHand := _enemy;
+
+    (* Add call of winning / losing check & callback *)
+    (*INSERT CODE HERE*)
+    isDraw = checkDraw _player _enemy;
+    match isDraw with
+    | True =>
+        rs = Int32 0;
+        msg = {_tag : "setResult"; _recipient : _sender; _amount : Uint128 0; result : rs};
+        msgs = one_msg msg;
+        send msgs
+    | False =>
+        isWin = checkWin _player _enemy;
+        match isWin with
+        | False =>
+            rs = Int32 2;
+            msg = {_tag : "setResult"; _recipient : _sender; _amount : Uint128 0; result : rs};
+            msgs = one_msg msg;
+            send msgs
+        | True =>
+            rs = Int32 1;
+            msg = {_tag : "setResult"; _recipient : _sender; _amount : Uint128 0; result : rs};
+            msgs = one_msg msg;
+            send msgs
+        end
+    end
+end

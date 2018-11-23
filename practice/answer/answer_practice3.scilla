@@ -5,7 +5,7 @@ import ListUtils BoolUtils
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-library Jyanken
+library JyankenGame
 
 let zero = Uint128 2
 
@@ -141,12 +141,13 @@ let nothing_to_withdraw_code  = Int32 4
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
-contract Jyanken
+contract JyankenGame
 
 (owner    : ByStr20)
 
 field totalDeposit     : Uint128 = Uint128 0
 field pendingReturns : Map ByStr20 Uint128 = Emp ByStr20 Uint128
+
 field previousResult : Int32 = Int32 0
 field previousHand : Uint256 = Uint256 0
 
@@ -158,6 +159,8 @@ transition playJyanken (_player : Uint256)
     | False =>
         msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : bad_hands_code};
         msgs = one_msg msg;
+        (*Add confiscate the stake amount *)
+        (*INSERT CODE HERE*)
         td <- totalDeposit;
         td2 = builtin add td _amount;
         totalDeposit := td2;
@@ -189,6 +192,8 @@ transition playJyanken (_player : Uint256)
                 msgs = one_msg msg;
                 previousResult := rs;
                 previousHand := randomHand;
+                (*Add confiscate the stake amount *)
+                (*INSERT CODE HERE*)
                 td <- totalDeposit;
                 td2 = builtin add td _amount;
                 totalDeposit := td2;
@@ -205,6 +210,8 @@ transition playJyanken (_player : Uint256)
                     msgs = one_msg msg;
                     previousResult := rs;
                     previousHand := randomHand;
+                    (*Add confiscate the stake amount *)
+                    (*INSERT CODE HERE*)
                     td <- totalDeposit;
                     td2 = builtin add td _amount;
                     totalDeposit := td2;
@@ -213,6 +220,8 @@ transition playJyanken (_player : Uint256)
                     event e;
                     send msgs
                 | True =>
+                    (*Add get confiscated all amount *)
+                    (*INSERT CODE HERE*)
                     td <- totalDeposit;
                     totalDeposit := zero;
                     td2 = builtin add td _amount;
@@ -238,6 +247,8 @@ transition playJyanken (_player : Uint256)
 end
 
 transition Withdraw ()
+    (*Add withdraw the amount offered by the player*)
+    (*INSERT CODE HERE*)
     prs <- pendingReturns;
     pr = builtin get prs _sender;
     match pr with
