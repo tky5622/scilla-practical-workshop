@@ -1,0 +1,493 @@
+import ListUtils PairUtils NatUtils
+
+library CommitScore
+
+
+let one_msg = 
+  fun (msg : Message) => 
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+let no_msg = Nil {Message}
+let zero = Uint128 0
+let fst =
+  tfun 'A =>
+  tfun 'B =>
+  fun (p : Pair ('A) ('B)) =>
+    match p with
+    | Pair a b => a
+    end
+
+let init_user_score = 
+        let zeros = Uint128 0 in
+        let fs_variables = Pair{(Uint128) (Uint128)} zeros zeros in
+        let sc_variables = Pair{(Uint128) (Uint128)} zeros zeros in
+        let scores = Pair {(Pair(Uint128) (Uint128)) (Pair(Uint128) (Uint128))} fs_variables sc_variables in
+        scores
+
+let getMessage = @fst String (Pair ByStr20 Int32)
+let pair_1_snd = @snd String (Pair ByStr20 Int32)
+let getUser = @fst ByStr20 Int32
+let getUserNo = @snd ByStr20 Int32
+
+let getFirst = @fst (Pair Uint128 Uint128) (Pair Uint128 Uint128)
+let getEvaluateScore = @fst Uint128 Uint128
+let getCommitScore = @snd Uint128 Uint128
+
+let getSecond = @snd (Pair Uint128 Uint128) (Pair Uint128 Uint128)
+let getPlanScore = @fst Uint128 Uint128
+let getTotalScore = @snd Uint128 Uint128
+
+
+let not_owner_code = Int32 1 
+let newly_created_code = Int32 2
+let succeed_add_code = Int32 3
+
+
+
+(*コミットスコアの計算用のライブラリ*)
+(*structが実装されたら*)
+let getFisrtPair = @fst  
+       Pair
+         ( 
+            Pair(String, String) 
+            Pair(Uint128, List Pair Pair(ByStr20 String) Uint128 )
+          ) 
+        Pair
+          (
+           ByStr20
+           ByStr20
+          )
+          
+let getOneNestedFirst = @fst            
+            Pair(String, String) 
+            Pair(Uint128, List Pair Pair(ByStr20 String) Uint128 )
+            
+let getOneTwiceNested1First  = @fst String, String
+let getOneTwiceNested1Second  = @snd String, String
+
+
+let getOneNestedSecond= @snd          
+            Pair(String, String) 
+            Pair(Uint128, List Pair Pair(ByStr20 String) Uint128 )
+let getOneTwiceNested2First  = @fst Uint128, List Pair Pair(ByStr20 String) Uint128
+let getOneTwiceNested2Second  = @snd Uint128, List Pair Pair(ByStr20 String) Uint128
+
+let getSecondPair = @snd 
+       Pair
+         ( 
+            Pair(String, String) 
+            Pair(Uint128, List Pair Pair(ByStr20 String) Uint128 )
+          ) 
+        Pair
+          (
+           ByStr20
+           ByStr20
+          )
+          
+let getTwoNestedFirst = @fst ByStr20 ByStr20
+let getTwoNestedSecond = @snd ByStr20 ByStr20
+
+
+(*書換え用のライブラリを追加する場所*)
+          
+)
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+contract CommitScore
+(initialOwner : ByStr20)
+
+
+field commitHistory : 
+    Map userAddress (Map commnetID 
+    (
+     Pair 
+        Pair
+          ( 
+            Pair(PlanID, votedTotalScore) 
+            Pair(CommiterScore, votedList Pair Pair(userAddress createdAd) votedScore )
+          ) 
+        Pair
+          (
+           userID
+           communityID
+          )
+    )
+  )
+  
+field commitHistory : 
+    Map ByStr20 (Map String ( Map String
+    (
+     Pair 
+        Pair
+          ( 
+            Pair(String, String) 
+            Pair(Uint128, List Pair Pair(ByStr20 String) Uint128 )
+          ) 
+        Pair
+          (
+           ByStr20
+           ByStr20
+          )
+    )
+  )
+ )
+
+  
+  
+  
+  
+field VoteHistory : 
+    Map userAddress (Map commnetID 
+    (
+     Pair 
+        Pair
+          ( 
+            Pair(commnetID, PlanID) 
+            Pair(votedTotalScore, votedList)
+          ) 
+        Pair
+          (
+           userID
+           communityID
+          )
+    )
+  )
+
+field PlanHistory : 
+    Map userAddress (Map commnetID 
+    (
+     Pair 
+        Pair
+          ( 
+            Pair(commnetID, PlanID) 
+            Pair(votedTotalScore, votedList)
+          ) 
+        Pair
+          (
+           userID
+           communityID
+          )
+    )
+  )
+
+
+
+                               
+(* owner ship is transferable initialOwner*)
+field owner :  ByStr20  =  initialOwner
+field ze : Uint128 = Uint128 0
+field communityHistory : Map (ByStr20  Pair(Pari(Uint128 Uint128)) )
+      = Emp ByStr20 Pair(Pair(Uint128  Uint128) Pair(Uint128 Uint128)
+
+field communityList : List ByStr20 = Nil {ByStr20}
+field HistoryContract : ByStr20 = initialOwner
+
+
+
+
+transition createPlan(communityId: ByStr20, 
+                      planId: ByStr20, depositeTokens: Uint128)
+                      
+     msg = {_tag : "getUserData"; 
+               (*あとで定義*)
+               _recipient : "userDataAddress"; 
+               _amount : Uint128 0; 
+               userID: _sender, 
+               communityId: communityId,
+               planID: planId, };
+    msgs = one_msg msg;
+    send msgs
+end
+
+(*IDは利用する型を削減するため、全てByStr20形式で扱う*)
+transition savePlanDate(userAddress: ByStr20, communityId: ByStr20,
+                        planId: ByStr20, depositTokens: Uint128)
+                        
+    (*あとで、ライブラリへ修正*)
+
+    IntProps = Emp String Uint128;
+    IntProps["depositTokens"] := depositTokens;
+    
+    HashProps = Emp String ByStr20;
+    HashProps["userAddress"] := userAddres;
+    HashProps["communityId"] := communityId;
+    HashProps["planId"] := planId
+                        
+    planDetails = {(Map String Uint128) (Map String ByStr20)}
+    PlanHistory[userAddress][communityId][PlanId] := planDetails
+    
+　　msg = {_tag : "createPlan"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0, 
+               communityId: Uint128 0,
+               planID: Uint128 0, };
+    msgs = one_msg msg;
+end
+
+
+
+
+
+transition createCommit(userAddress: ByStr20, communityAddress: ByStr20)
+     struct = Pair(Uint128, Uint128)
+     CommitHistory[userAddress][communityAddress][CommitId] <- struct  
+    msg = {_tag : "createCommit"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0, 
+               communityId: Uint128 0,
+               planID: Uint128 0, };
+    msgs = one_msg msg;
+    send msgs
+end
+
+
+transition onGetCallBackUserCommitData()
+    (*あとで、ライブラリへ修正*)
+
+    IntProps = Emp String Uint128;
+    IntProps["depositTokens"] := depositTokens;
+    
+    HashProps = Emp String ByStr20;
+    HashProps["userAddress"] := userAddres;
+    HashProps["communityId"] := communityId;
+    HashProps["planId"] := planId
+                        
+    planDetails = {(Map String Uint128) (Map String ByStr20)}
+    PlanHistory[userAddress][communityId][PlanId] := planDetails
+    
+　　msg = {_tag : "createPlan"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0, 
+               communityId: Uint128 0,
+               planID: Uint128 0, };
+    msgs = one_msg msg;
+end
+
+
+
+
+transition createVote(userAddress: ByStr20, communityAddress: ByStr20)
+     struct = Pair(Uint128, Uint128)
+     CommitHistory[userAddress][communityAddress][CommitId] <- struct  
+    msg = {_tag : "createCommit"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0, 
+               communityId: Uint128 0,
+               planID: Uint128 0, };
+    msgs = one_msg msg;
+    send msgs
+end
+
+
+transition onGetCallBackUserVoteData()
+    (*あとで、ライブラリへ修正*)
+    IntProps = Emp String Uint128;
+    IntProps["depositTokens"] := depositTokens;
+    
+    HashProps = Emp String ByStr20;
+    HashProps["userAddress"] := userAddres;
+    HashProps["communityId"] := communityId;
+    HashProps["planId"] := planId
+                        
+    planDetails = {(Map String Uint128) (Map String ByStr20)}
+    PlanHistory[userAddress][communityId][PlanId] := planDetails
+    
+　　msg = {_tag : "createPlan"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0, 
+               communityId: Uint128 0,
+               planID: Uint128 0, };
+    msgs = one_msg msg;
+end
+
+
+transition createUnEvaluatedVote(userAddress: ByStr20, communityAddress: ByStr20)
+     struct = Pair(Uint128, Uint128)
+     VoteHistory[userAddress][communityAddress][voteId] <- struct
+     newVote = Pair(
+         Map String ByStr20
+         Map String Uint128
+         )
+     votedList <- voteList[communityId][planId][commitId] 
+     
+     match votedList with
+         | Some votes=> 
+     newVotedList = 
+         Cons {Pair(Map String ByStr20 Map String Uint128)} newVote votes
+         | None =>
+             let nil_msg = Nil {Message} in
+             Cons {Message} msg nil_msg
+         
+    voteList[communityId][planId][commitId] := newVotedList
+
+         
+    msg = {_tag : "createVote"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0, 
+               communityId: Uint128 0,
+               planID: Uint128 0, };
+    msgs = one_msg msg;
+    send msgs
+end
+
+
+
+transition commitUserVote(userAddress: ByStr20, communityAddress: ByStr20)
+     VoteHistory[userAddress][communityAddress][voteId] <- struct
+     newVote = Pair(
+         Map String ByStr20
+         Map String Uint128
+         )
+     votedList <- voteList[communityId][planId][commitId] 
+     
+     match votedList with
+         | Some votes=> 
+     newVotedList = 
+         Cons {Pair(Map String ByStr20 Map String Uint128)} newVote votes
+         | None =>
+             let nil_msg = Nil {Message} in
+             Cons {Message} msg nil_msg
+         
+    voteList[communityId][planId][commitId] := newVotedList
+
+    msg = {_tag : "createVote"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0, 
+               communityId: Uint128 0,
+               planID: Uint128 0, };
+    msgs = one_msg msg;
+    send msgs
+end
+
+
+
+    (*ユーザーのデータを取得する処理をどう共通化するか？*)
+transition getplan(userAddress: ByStr20, communityAddress: ByStr20, planId: ByStr20)
+     plan <- PlanHistory[userAddress][communityAddress][planId]
+     match plan with 
+    | Some plan =>
+　　　
+       msg = {_tag : "callBackPlan"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0; 
+               communityId: Uint128 0;
+               planID: Uint128 0 };
+      msgs = one_msg msg;
+      send msgs
+    | None =>
+        msg = {_tag : "errorCallbackPlan"; 
+               _recipient : _sender; 
+               _amount : Uint128 0;
+               _code: Uint128 0
+              };
+      msgs = one_msg msg;
+      send msgs
+end
+
+transition getCommit(userAddress: ByStr20, communityAddress: ByStr20, commitId: String)
+     commit <- CommitHistory[userAddress][communityAddress][commitId]
+     match commit with 
+    | Some commit =>
+　　　
+       msg = {_tag : "callBackCommit"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0; 
+               communityId: Uint128 0;
+               planID: Uint128 0 };
+      msgs = one_msg msg;
+      send msgs
+      
+    | None =>
+        msg = {_tag : "errorCallbackCommit"; 
+               _recipient : _sender; 
+               _amount : Uint128 0;
+               _code: Uint128 0
+              };
+      msgs = one_msg msg;
+      send msgs
+end
+
+
+transition getvote(userAddress: ByStr20, communityAddress: ByStr20, voteId: String)
+     commit <- VoteHistory[userAddress][communityAddress][voteId]
+     match vote with 
+    | Some vote =>
+　　　
+       msg = {_tag : "callBackVote"; 
+               _recipient : _sender; 
+               _amount : Uint128 0; 
+               userID: Uint128 0; 
+               communityId: Uint128 0;
+               planID: Uint128 0 };
+      msgs = one_msg msg;
+      send msgs
+      
+    | None =>
+        msg = {_tag : "errorCallbackPlan"; 
+               _recipient : _sender; 
+               _amount : Uint128 0;
+               _code: Uint128 0
+              };
+      msgs = one_msg msg;
+      send msgs
+end
+
+
+
+
+
+
+
+
+
+
+
+
+(*多分リストをイベントやメッセージに含められないので、実装しない*)
+(*transition getPlansList(userAddress: ByStr20, communityAddress: ByStr20)*)
+(*     msg = {_tag : "getPlansList"; *)
+(*               _recipient : _sender; *)
+(*               _amount : Uint128 0; *)
+(*               userID: Uint128 0, *)
+(*               communityId: Uint128 0,*)
+(*               planID: Uint128 0, };*)
+(*        msgs = one_msg msg;*)
+(*        send msgs*)
+(**)
+(*end*)
+(**)
+(*transition getCommitsList(userAddress: ByStr20, communityAddress: ByStr20)*)
+(*     msg = {_tag : "getPlansList"; *)
+(*               _recipient : _sender; *)
+(*               _amount : Uint128 0; *)
+(*               userID: Uint128 0, *)
+(*               communityId: Uint128 0,*)
+(*               planID: Uint128 0, };*)
+(*        msgs = one_msg msg;*)
+(*        send msgs*)
+(*end*)
+(**)
+(*transition getVotesList(userAddress: ByStr20, communityAddress: ByStr20)*)
+(*     msg = {_tag : "getPlansList"; *)
+(*               _recipient : _sender; *)
+(*               _amount : Uint128 0; *)
+(*               userID: Uint128 0, *)
+(*               communityId: Uint128 0,*)
+(*               planID: Uint128 0, };*)
+(*        msgs = one_msg msg;*)
+(*        send msgs*)
+(*end*)
+
+
