@@ -1,0 +1,17 @@
+description = "Scilla workbench implementation."
+requires = "angstrom
+            batteries
+            core
+            cryptokit
+            ppx_deriving
+            ppx_deriving.runtime
+            ppx_let
+            ppx_sexp_conv
+            ppx_sexp_conv.runtime-lib
+            scilla-base
+            stdint
+            yojson"
+archive(byte) = "scilla_eval.cma"
+archive(native) = "scilla_eval.cmxa"
+plugin(byte) = "scilla_eval.cma"
+plugin(native) = "scilla_eval.cmxs"

@@ -1,0 +1,10 @@
+{
+  "contract_info": {
+    "name": "Empty",
+    "params": [],
+    "fields": [],
+    "transitions": [],
+    "events": []
+  },
+  "warnings": []
+}

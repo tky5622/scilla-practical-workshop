@@ -1,0 +1,18 @@
+description = "Scilla workbench implementation."
+requires = "batteries
+            core
+            cryptokit
+            hex
+            num
+            ppx_deriving.runtime
+            ppx_deriving.show
+            ppx_deriving_yojson.runtime
+            ppx_sexp_conv
+            ppx_sexp_conv.runtime-lib
+            scilla-cpp-deps
+            stdint
+            yojson"
+archive(byte) = "scilla_base.cma"
+archive(native) = "scilla_base.cmxa"
+plugin(byte) = "scilla_base.cma"
+plugin(native) = "scilla_base.cmxs"

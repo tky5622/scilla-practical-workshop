@@ -1,0 +1,22 @@
+[
+    {
+        "vname" : "beneficiary",
+        "type"  : "ByStr20", 
+        "value" : "0x1234567890123456789012345678901234567890"
+    },
+    {
+        "vname" : "auctionStart",
+        "type"  : "BNum" ,
+        "value" : "199"
+    },
+    { 
+        "vname" : "biddingTime",
+        "type"  : "Uint128",
+        "value" : "50"
+    },
+    {
+        "vname" : "_creation_block",
+        "type" : "BNum",
+        "value" : "1"
+    }
+]

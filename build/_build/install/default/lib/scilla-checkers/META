@@ -1,0 +1,17 @@
+description = "Custom Scilla checkers"
+requires = "angstrom
+            batteries
+            core
+            cryptokit
+            ppx_deriving
+            ppx_deriving.runtime
+            ppx_let
+            ppx_sexp_conv
+            ppx_sexp_conv.runtime-lib
+            scilla-base
+            stdint
+            yojson"
+archive(byte) = "scilla_checkers.cma"
+archive(native) = "scilla_checkers.cmxa"
+plugin(byte) = "scilla_checkers.cma"
+plugin(native) = "scilla_checkers.cmxs"

@@ -1,0 +1,6 @@
+description = ""
+requires = "cryptokit ctypes ctypes.foreign"
+archive(byte) = "scilla_cpp_deps.cma"
+archive(native) = "scilla_cpp_deps.cmxa"
+plugin(byte) = "scilla_cpp_deps.cma"
+plugin(native) = "scilla_cpp_deps.cmxs"
