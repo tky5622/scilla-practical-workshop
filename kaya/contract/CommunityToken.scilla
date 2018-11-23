@@ -429,4 +429,3 @@ transition Allowance (tokenOwner : ByStr20, spender : ByStr20)
     send msgs
   end
 end
-

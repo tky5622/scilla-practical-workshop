@@ -5,9 +5,6 @@
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-
-import BoolUtils
-
 library FungibleToken
 
 let one_msg = 
@@ -39,9 +36,6 @@ let le_int =
       | False => False
       end
     end
-
-
-let not_owner_code = Int32 1 
     
 
 (***************************************************)
@@ -49,153 +43,15 @@ let not_owner_code = Int32 1
 (***************************************************)
 
 contract FungibleToken
-(initialOwner : ByStr20,
- initialTokens: Uint128
-)
+(owner : ByStr20,
+ total_tokens : Uint128)
 
 (* Initial balance is not stated explicitly: it's initialized when creating the contract. *)
 
 field balances : Map ByStr20 Uint128 =
   let m = Emp ByStr20 Uint128 in
-    builtin put m initialOwner initialTokens
+    builtin put m owner total_tokens
 field allowed : Map ByStr20 (Map ByStr20 Uint128) = Emp ByStr20 (Map ByStr20 Uint128)
-field inflationRate : Uint128 = Uint128 10
-
-(* token is mintable and inflatable. inital token supply is 20 million *)
-field total_tokens : Uint128 =  initialTokens
-(* owner ship is transferable *)
-field owner :  ByStr20  =  initialOwner
-
-
-transition getInflateRate ()
-  rate <- inflationRate;
-  msg = {_tag : "Main";
-         _recipient : _sender; 
-         _amount : Uint128 0; 
-         rate :  rate };
-  msgs = one_msg msg;
-  send msgs
-end
-
-
-transition transferOwnerShip (newOwner : ByStr20)
-  now_owner <- owner;
-  is_owner = builtin eq now_owner _sender;
-  match is_owner with
-  | True => 
-      owner := newOwner;
-      msg = {_tag : "Main";
-             _recipient : _sender;
-             _amount : Uint128 0;
-             owner : newOwner };
-      msgs = one_msg msg;
-      send msgs
-    end
-end
-
-
-(*add issue function *)
-transition issue(issueAmount : Uint128)
-  token_owner <- owner;
-  is_owner = builtin eq token_owner _sender;
-  ttl_token <- total_tokens;
-  bl <- balances;
-
-  match is_owner with
-  | True =>
-    (* mint total_token supply*)
-    owner_val = builtin get bl token_owner;
-    
-    match owner_val with
-    | Some oval =>
-        new_total = builtin add ttl_token issueAmount;
-        total_tokens := new_total;
-        new_owner_val = builtin add oval issueAmount;
-        new_balances = builtin put bl token_owner new_owner_val;
-        balances := new_balances;
-
-    (*send result*)
-        msg = {_tag : "Main";
-               _recipient : _sender; 
-               _amount : Uint128 0
-        };
-        msgs = one_msg msg;
-        send msgs
-    | None => 
-             msg = {_tag : "Main";
-             _recipient : _sender; 
-             _amount : Uint128 0
-             };
-        msgs = one_msg msg;
-        send msgs
-    end
- | False =>
-    msg = {_tag : "Main"; 
-           _recipient : _sender; 
-           _amount : Uint128 0; 
-           _code : not_owner_code
-    };
-    msgs = one_msg msg;
-    send msgs
-  end
-end
-
-transition burn(issueAmount : Uint128)
-  token_owner <- owner;
-  is_owner = builtin eq token_owner _sender;
-  ttl_token <- total_tokens;
-  bl <- balances;
-
-  match is_owner with
-  | True =>
-    (* mint total_token supply*)
-    owner_val = builtin get bl token_owner;
-    
-    match owner_val with
-    | Some oval =>
-        can_sub = builtin lt ttl_token issueAmount;
-        match can_sub with
-        | True =>
-            new_total = builtin sub ttl_token issueAmount;
-            total_tokens := new_total;
-            new_owner_val = builtin sub oval issueAmount;
-            new_balances = builtin put bl token_owner new_owner_val;
-            balances := new_balances;
-                (*send result*)
-            msg = {_tag : "Main";
-                   _recipient : _sender; 
-                   _amount : Uint128 0
-                  };
-            msgs = one_msg msg;
-            send msgs
-
-
-        | False =>
-            msg = {_tag : "Main";
-                   _recipient : _sender; 
-                   _amount : Uint128 0
-                  };
-            msgs = one_msg msg;
-            send msgs
-        end
-    | None => 
-        msg = {_tag : "Main";
-               _recipient : _sender; 
-               _amount : Uint128 0
-              };
-        msgs = one_msg msg;
-        send msgs
-    end
- | False =>
-    msg = {_tag : "Main"; 
-           _recipient : _sender; 
-           _amount : Uint128 0; 
-           _code : not_owner_code
-    };
-    msgs = one_msg msg;
-    send msgs
-  end
-end
 
 transition BalanceOf (tokenOwner : ByStr20)
   bl <- balances;
@@ -212,10 +68,8 @@ transition BalanceOf (tokenOwner : ByStr20)
   end
 end
 
-
 transition TotalSupply ()
-  ttl <- total_tokens;
-  msg = { _tag : "Main"; _recipient : _sender; _amount : Uint128 0; total_tokens : ttl};
+  msg = { _tag : "Main"; _recipient : _sender; _amount : Uint128 0; total_tokens : total_tokens};
   msgs = one_msg msg;
   send msgs
 end

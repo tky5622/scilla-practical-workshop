@@ -1,0 +1,47 @@
+
+(* HelloWorldCaller contract *)
+
+import ListUtils
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+library HelloWorldCaller
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+let not_owner_code = Int32 1
+let set_hello_code = Int32 2
+
+let mystr = "Has been changed"
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+(* callee_address is the address of the HeloWorld contract *)
+
+contract HelloWorldCaller
+(callee_address : ByStr20)
+
+field modified_welcome_msg : String = ""
+
+transition callHello ()
+    msg = {_tag : "getHello"; _recipient : callee_address; _amount : Uint128 0};
+    msgs = one_msg msg;
+    send msgs
+end
+
+transition callBackHello (msg : String)
+    r1 <- modified_welcome_msg;
+    r2 = builtin concat r1 mystr;
+    modified_welcome_msg := r2;
+    e = {_eventname : "callBackHello"; msg : r2};
+    event e;
+    msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; msg : r2};
+    msgs = one_msg msg;
+    send msgs
+end

@@ -1,15 +1,14 @@
 (* HelloWorld contract *)
 
+import ListUtils
 
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-import ListUtils
-
 library HelloWorld
 
-let one_msg = 
-  fun (msg : Message) => 
+let one_msg =
+  fun (msg : Message) =>
   let nil_msg = Nil {Message} in
   Cons {Message} msg nil_msg
 
@@ -29,21 +28,20 @@ transition setHello (msg : String)
   is_owner = builtin eq owner _sender;
   match is_owner with
   | False =>
-    msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : not_owner_code};
-    msgs = one_msg msg;
-    send msgs
+    e1 = {_eventname : "setHelloFailure"; caller : _sender; code : not_owner_code};
+    event e1
   | True =>
     welcome_msg := msg;
-    msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : set_hello_code};
-    msgs = one_msg msg;
-    send msgs
+    e2 = {_eventname : "setHelloSuccess"; caller : _sender; msgstr : msg};
+    event e2
   end
 end
 
-
 transition getHello ()
     r <- welcome_msg;
-    msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; msg : r};
+    e = {_eventname : "getHelloSuccess"; caller : _sender; msg : r};
+    event e;
+    msg = {_tag : "callBackHello"; _recipient : _sender; _amount : Uint128 0; msg : r};
     msgs = one_msg msg;
     send msgs
 end

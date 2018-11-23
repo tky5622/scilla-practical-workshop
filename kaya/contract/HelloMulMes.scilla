@@ -1,17 +1,19 @@
 (* HelloWorld contract *)
 
+import ListUtils
 
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-import ListUtils
-
 library HelloWorld
 
-let one_msg = 
-  fun (msg : Message) => 
+let one_msg =
+  fun (msg : Message) =>
+  fun (msg2 : Message) =>
+
   let nil_msg = Nil {Message} in
-  Cons {Message} msg nil_msg
+  let one =Cons {Message} msg nil_msg in
+  Cons {Message} msg2 one
 
 let not_owner_code = Int32 1
 let set_hello_code = Int32 2
@@ -30,12 +32,14 @@ transition setHello (msg : String)
   match is_owner with
   | False =>
     msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : not_owner_code};
-    msgs = one_msg msg;
+    msg2 = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : not_owner_code};
+    msgs = one_msg msg msg2;
     send msgs
   | True =>
     welcome_msg := msg;
     msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : set_hello_code};
-    msgs = one_msg msg;
+    msg2 = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : not_owner_code};
+    msgs = one_msg msg msg2;
     send msgs
   end
 end
@@ -44,6 +48,8 @@ end
 transition getHello ()
     r <- welcome_msg;
     msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; msg : r};
-    msgs = one_msg msg;
+    msg2 = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : not_owner_code};
+
+    msgs = one_msg msg msg2;
     send msgs
 end

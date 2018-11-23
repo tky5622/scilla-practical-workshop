@@ -16,204 +16,226 @@
 */
 
 /* Wallet Component */
-const assert = require('assert')
-const { Zilliqa } = require('zilliqa-js')
-const LOG_WALLET = require('debug')('kaya:wallet')
-
-const config = require('../../config')
+const assert = require('assert');
+const { Zilliqa } = require('zilliqa-js');
+const BN = require('bn.js');
+const { logVerbose, consolePrint } = require('../../utilities');
+const config = require('../../config');
+const logLabel = 'Wallet';
 
 // @dev: As this is a kaya, private keys will be stored
 // note: Real systems do not store private key
 
-// Wallet will store three things - address, private key and balance
-let wallets = {}
+// Wallet will store address, private key and balance
+let wallets = {};
 
 /*  Dummy constructor for zilliqajs */
 // @dev: Will be replaced once zilliqa-js exposes utils without constructors
 const zilliqa = new Zilliqa({
   nodeUrl: 'http://localhost:8888',
-})
-
-// wrapper: print only when not in test mode
-const consolePrint = text => {
-  if (process.env.NODE_ENV !== 'test') {
-    console.log(text)
-  }
-}
+});
 
 const createNewWallet = () => {
-  const pk = zilliqa.util.generatePrivateKey()
-  const address = zilliqa.util.getAddressFromPrivateKey(pk)
-  const pkString = pk.toString('hex')
+  const pk = zilliqa.util.generatePrivateKey();
+  const address = zilliqa.util.getAddressFromPrivateKey(pk);
   const newWallet = {
-    privateKey: pkString,
+    privateKey: pk,
     amount: config.wallet.defaultAmt,
     nonce: config.wallet.defaultNonce,
-  }
-  wallets[address] = newWallet
-}
+  };
+  wallets[address] = newWallet;
+};
 
 // validate an accounts object to check validity
-const validateAccounts = accounts => {
-  Object.keys(accounts).forEach(key => {
+const validateAccounts = (accounts) => {
+  Object.keys(accounts).forEach((key) => {
     if (!zilliqa.util.isAddress(key)) {
-      throw new Error(`Invalid address ${key}`)
+      throw new Error(`Invalid address ${key}`);
     }
-    const account = accounts[key]
+    const account = accounts[key];
     // check if account has the necessary properties
     if (!account.privateKey && !account.nonce && !account.amount) {
-      throw new Error('Invalid fields')
+      throw new Error('Invalid fields');
     }
 
     const addressFromPK = zilliqa.util.getAddressFromPrivateKey(
-      account.privateKey
-    )
+      account.privateKey,
+    );
     if (addressFromPK !== key) {
-      LOG_WALLET('Validation failure: Invalid Address and Private key-pair')
-      throw new Error(`Invalid address for ${key}`)
+      logVerbose(logLabel, 'Validation failure: Invalid Address and Private key-pair');
+      throw new Error(`Invalid address for ${key}`);
     }
     if (Number.isInteger(account.nonce) && Number.isInteger(account.amount)) {
       if (account.nonce < 0 || account.amount < 0) {
-        throw new Error('Invalid nonce or amount')
+        throw new Error('Invalid nonce or amount');
       }
     } else {
-      LOG_WALLET('Amount/nonce is not valid type')
-      throw new Error('Invalid nonce or amount')
+      logVerbose(logLabel, 'Amount/nonce is not valid type');
+      throw new Error('Invalid nonce or amount');
     }
-  })
-  LOG_WALLET('Valid accounts file')
-}
+  });
+  logVerbose(logLabel, 'Valid accounts file');
+};
 
 module.exports = {
-  createWallets: n => {
-    assert(n > 0)
+  
+  createWallets: (n) => {
+    assert(n > 0);
     for (let i = 0; i < n; i += 1) {
-      createNewWallet()
+      createNewWallet();
     }
   },
 
   // load accounts object into wallets
-  loadAccounts: accounts => {
-    validateAccounts(accounts)
-    LOG_WALLET(`${Object.keys(accounts).length} wallets bootstrapped from file`)
-    wallets = accounts
+  loadAccounts: (accounts) => {
+    validateAccounts(accounts);
+    logVerbose(logLabel, 
+      `${Object.keys(accounts).length} wallets bootstrapped from file`,
+    );
+    wallets = accounts;
+  },
+
+  saveAccounts: (savedDir, timestamp) => {
+    const targetFilePath = `${savedDir}${timestamp}_accounts.json`;
+    logVerbose(logLabel, `Saving account details to ${targetFilePath}`);
+
   },
 
   getAccounts: () => wallets,
 
   printWallet: () => {
     if (wallets.length === 0) {
-      console.log('No wallets generated.')
+      console.log('No wallets generated.');
     } else {
-      consolePrint('Available Accounts')
-      consolePrint('=============================')
-      const keys = []
-      for (let i = 0; i < config.wallet.numAccounts; i += 1) {
-        const addr = Object.keys(wallets)[i]
+      consolePrint('Available Accounts');
+      consolePrint('='.repeat(80));
+      const accountAddresses = Object.keys(wallets);
+      const keys = [];
+      accountAddresses.forEach((addr, index) => {
         consolePrint(
-          `(${i}) ${addr} (Amt: ${wallets[addr].amount}) (Nonce: ${
+          `(${index+1}) ${addr}\t(Amt: ${wallets[addr].amount})\t(Nonce: ${
             wallets[addr].nonce
-          })`
-        )
-        keys.push(wallets[addr].privateKey)
-      }
-      consolePrint('\n Private Keys ')
-      consolePrint('=============================')
-      for (let i = 0; i < config.wallet.numAccounts; i += 1) {
-        consolePrint(`(${i}) ${keys[i]}`)
-      }
+          })`);
+          keys.push(wallets[addr].privateKey);
+      });
+
+      consolePrint('\n Private Keys ');
+      consolePrint('='.repeat(80));
+      keys.forEach((key, i) => {
+        consolePrint(`(${i+1}) ${key}`);
+      });
+      consolePrint('='.repeat(80));
     }
   },
 
   sufficientFunds: (address, amount) => {
     // checking if an address has sufficient funds for deduction
-    const userBalance = module.exports.getBalance(address)
-    LOG_WALLET(`Checking if ${address} has ${amount}`)
+    const userBalance = module.exports.getBalance(address);
+    logVerbose(logLabel, `Checking if ${address} has ${amount}`);
     if (userBalance.balance < amount) {
-      LOG_WALLET('Insufficient funds.')
-      return false
+      logVerbose(logLabel, 'Insufficient funds.');
+      return false;
     }
-    LOG_WALLET('Sufficient Funds.')
-    return true
+    logVerbose(logLabel, 'Sufficient Funds.');
+    return true;
   },
 
+  /** 
+   * Deduct funds from an account
+   * @param: {string}: Address of an account
+   * @param: {Number} amount: amount to be deducted
+   * Does not return any value
+   */
+
   deductFunds: (address, amount) => {
-    LOG_WALLET(`Deducting ${amount} from ${address}`)
+
+    logVerbose(logLabel, `Deducting ${amount} from ${address}`);
     if (!zilliqa.util.isAddress(address)) {
-      throw new Error('Address size not appropriate')
+      throw new Error('Address size not appropriate');
     }
     if (!wallets[address] || !module.exports.sufficientFunds(address, amount)) {
-      throw new Error('Insufficient Funds')
+      throw new Error('Insufficient Funds');
     }
 
     // deduct funds
-    let currentBalance = wallets[address].amount
-    LOG_WALLET(`Sender's previous Balance: ${currentBalance}`)
-    currentBalance -= amount
+    let currentBalance = wallets[address].amount;
+    logVerbose(logLabel, `Sender's previous Balance: ${currentBalance}`);
+    currentBalance -= amount;
     if (currentBalance < 0) {
-      throw new Error('Unexpected error, funds went below 0')
+      throw new Error('Unexpected error, funds went below 0');
     }
-    wallets[address].amount = currentBalance
-    LOG_WALLET(
-      `Deduct funds complete. Sender's new balance: ${wallets[address].amount}`
-    )
+    wallets[address].amount = currentBalance;
+    logVerbose(logLabel, 
+      `Deduct funds complete. Sender's new balance: ${wallets[address].amount}`,
+    );
   },
 
+  /** 
+   * Add funds to an account address
+   * @param: { string } address - Address of recipient
+   * @param: { Number } amount - amount of zils to transfer
+   * Does not return any value
+   */
   addFunds: (address, amount) => {
-    LOG_WALLET(`Adding ${amount} to ${address}`)
+    logVerbose(logLabel, `Adding ${amount} to ${address}`);
     if (!zilliqa.util.isAddress(address)) {
-      throw new Error('Address size not appropriate')
+      throw new Error('Address size not appropriate');
     }
     if (!wallets[address]) {
       // initialize new wallet account
-      LOG_WALLET(`Creating new wallet account for ${address}`)
-      wallets[address] = {}
-      wallets[address].amount = 0
-      wallets[address].nonce = 0
+      logVerbose(logLabel, `Creating new wallet account for ${address}`);
+      wallets[address] = {};
+      wallets[address].amount = 0;
+      wallets[address].nonce = 0;
     }
-    let currentBalance = wallets[address].amount
-    LOG_WALLET(`Recipient's previous Balance: ${currentBalance}`)
+    let currentBalance = wallets[address].amount;
+    logVerbose(logLabel, `Recipient's previous Balance: ${currentBalance}`);
 
     // add amount
-    currentBalance += amount
-    wallets[address].amount = currentBalance
-    LOG_WALLET(
+    const bnCurrentBalance = new BN(currentBalance);
+    const bnAmount = new BN(amount);
+    const resultBalance = bnCurrentBalance.add(bnAmount);
+
+    // FIXME: Change wallet address amount to BN objects
+    wallets[address].amount = resultBalance.toNumber();
+    logVerbose(logLabel, 
       `Adding funds complete. Recipient's new Balance: ${
         wallets[address].amount
-      }`
-    )
+      }`,
+    );
   },
 
-  increaseNonce: address => {
-    LOG_WALLET(`Increasing nonce for ${address}`)
+  increaseNonce: (address) => {
+    logVerbose(logLabel, `Increasing nonce for ${address}`);
     if (!zilliqa.util.isAddress(address)) {
-      throw new Error('Address size not appropriate')
+      throw new Error('Address size not appropriate');
     }
     if (!wallets[address]) {
-      throw new Error('Address not found')
+      throw new Error('Address not found');
     } else {
-      const newNonce = wallets[address].nonce + 1
-      wallets[address].nonce = newNonce
-      LOG_WALLET(`New nonce for ${address} : ${newNonce}`)
+      const newNonce = wallets[address].nonce + 1;
+      wallets[address].nonce = newNonce;
+      logVerbose(logLabel, `New nonce for ${address} : ${newNonce}`);
     }
   },
 
-  getBalance: address => {
-    if (!zilliqa.util.isAddress(address)) {
-      throw new Error('Address size not appropriate')
+  getBalance: (value) => {
+    if (!zilliqa.util.isAddress(value)) {
+      throw new Error('Address size not appropriate');
     }
-    LOG_WALLET(`Getting balance for ${address}`)
+    logVerbose(logLabel, `Getting balance for ${value}`);
+    address = value.toLowerCase();
 
     if (!wallets[address]) {
       return {
         balance: 0,
         nonce: 0,
-      }
+      };
     }
 
     return {
       balance: wallets[address].amount,
       nonce: wallets[address].nonce,
-    }
+    };
   },
-}
+};

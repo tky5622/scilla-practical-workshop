@@ -14,225 +14,279 @@
   You should have received a copy of the GNU General Public License along with
   kaya.  If not, see <http://www.gnu.org/licenses/>.
 */
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const express = require('express');
+const fs = require('fs');
+const rimraf = require('rimraf');
+const yargs = require('yargs');
 
-const express = require('express')
-const bodyParser = require('body-parser')
-const LOG_APPJS = require('debug')('kaya:app.js')
+const expressjs = express();
+const config = require('./config');
+const logic = require('./logic');
+const wallet = require('./components/wallet/wallet');
+const utils = require('./utilities');
+const initArgv = require('./argv');
 
-const expressjs = express()
-
-const fs = require('fs')
-const fsp = require('node-fs')
-const cors = require('cors')
-const { argv } = require('yargs')
-const rimraf = require('rimraf')
-const path = require('path')
-
-const config = require('./config')
-const logic = require('./logic')
-const wallet = require('./components/wallet/wallet')
-
-expressjs.use(bodyParser.json({ extended: false }))
-
-let isPersistence = false // tmp is the default behavior
-
-function makeResponse(id, jsonrpc, data, isErr) {
-  const responseObj = {}
-  responseObj.id = id
-  responseObj.jsonrpc = jsonrpc
-  if (isErr) {
-    responseObj.result = { Error: data }
-  } else {
-    responseObj.result = data
-  }
-  return responseObj
-}
-
-if (argv.save) {
-  LOG_APPJS('Save mode enabled')
-  isPersistence = true
-}
-
-if (argv.load) {
-  // loading option specified
-  LOG_APPJS('Loading option specified.')
-  logic.bootstrapFile(argv.load)
-  isPersistence = true
-}
-
-if (process.env.NODE_ENV === 'test') {
-  argv.accounts = 'test/account-fixtures.json'
-}
-
-/* account creation/loading based on presets given */
-if (argv.accounts) {
-  LOG_APPJS(`Bootstrapping from account fixture files: ${argv.accounts}`)
-  const accountsPath = argv.accounts
-  if (!fs.existsSync(accountsPath)) {
-    throw new Error('Account Path Invalid')
-  }
-  const accounts = JSON.parse(fs.readFileSync(accountsPath, 'utf-8'))
-  wallet.loadAccounts(accounts)
+expressjs.use(bodyParser.json({ extended: false }));
+let argv;
+if (process.env.NODE_ENV !== 'test') {
+  argv = initArgv(yargs).argv;
 } else {
-  /* Create Dummy Accounts */
-  // create 10 wallets by default
-  wallet.createWallets(config.wallet.numAccounts)
-}
-wallet.printWallet()
-
-// cleanup old folders
-if (fs.existsSync('./tmp')) {
-  LOG_APPJS(`Tmp folder found. Removing ${__dirname}/tmp`)
-  rimraf.sync(path.join(__dirname, '/tmp'))
-  LOG_APPJS(`${__dirname}/tmp removed`)
+  console.log('-------- TEST MODE -------------');
+  argv = config.testconfigs.args;
 }
 
-if (!fs.existsSync('./tmp')) {
-  fs.mkdirSync('./tmp')
-  LOG_APPJS(`tmp folder created in ${__dirname}/tmp`)
-}
-if (!fs.existsSync('./data')) {
-  fs.mkdirSync('./data')
-  fsp.mkdir('./data/save', 777, true, err => {
-    if (err) {
-      console.log(err)
-    } else {
-      LOG_APPJS('Directory created')
-    }
-  })
+// utils.initArgs(argv); // init options in utils
+
+
+const logLabel = 'App.js';
+
+const makeResponse = (id, jsonrpc, data, isErr) => {
+  const responseObj = { id, jsonrpc };
+  responseObj.result = isErr ? { Error: data } : data;
+  return responseObj;
 }
 
 const wrapAsync = fn => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next)
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+if (argv.d.trim() === 'saved/') {
+  throw new Error('Saved dir is reserved for saved files');
 }
+
+// Stores all the option flags and configurations
+// Console defined flag will override the config settings
+let options = {
+  fixtures: argv.f,
+  numAccts: argv.n,
+  dataPath: argv.d,
+  remote: argv.r,
+  verbose: argv.v,
+  save: argv.s,
+  load: argv.l
+}
+
+utils.consolePrint(`Running from ${options.remote ? 'remote' : 'local'} interpreter`)
+if (options.remote) { utils.consolePrint(config.scilla.url) };
+utils.consolePrint('='.repeat(80));
+
+utils.prepareDirectories(options.dataPath); // prepare the directories required
+
+if (options.save) {
+  utils.logVerbose(logLabel, 'Save enabled. Data files from this session will be saved');
+}
+
+if (options.load) {
+  // loading option specified
+  utils.logVerbose(logLabel, 'Loading option specified. Loading files now...');
+  // loads file into dbPath from the given bootstrap file
+  const importedData = utils.loadData(options.load);
+  wallet.loadAccounts(importedData.accounts);
+  logic.utils.loadData(importedData.transactions, importedData.createdContractsByUsers);
+  utils.loadDataToDir(options.dataPath, importedData);
+  utils.logVerbose(logLabel, 'Load completed');
+}
+
+if (process.env.NODE_ENV === 'test') {
+  options.fixtures = 'test/account-fixtures.json';
+}
+
+/* 
+* Account creation/loading based on presets given 
+* @dev : Only create wallets if the user does not supply any load file
+*/
+if(!options.load) { 
+  if (options.fixtures) {
+    utils.logVerbose(logLabel, `Bootstrapping from account fixture files: ${options.fixtures}`);
+    const accountsPath = options.fixtures;
+    if (!fs.existsSync(accountsPath)) {
+      throw new Error('Account Path Invalid');
+    }
+    const accounts = JSON.parse(fs.readFileSync(accountsPath, 'utf-8'));
+    wallet.loadAccounts(accounts);
+  } else {
+    /* Create Dummy Accounts */
+    wallet.createWallets(options.numAccts);
+  }
+}
+
+wallet.printWallet();
+
 
 // cross region settings with Env
 if (process.env.NODE_ENV === 'dev') {
-  expressjs.use(cors())
-  LOG_APPJS('CORS Enabled.')
+  expressjs.use(cors());
+  utils.logVerbose(logLabel, 'CORS Enabled');
 }
 
 expressjs.get('/', (req, res) => {
-  res.status(200).send('Kaya RPC Server')
-})
+  res.status(200).send('Kaya RPC Server');
+});
 
 // Method handling logic for incoming POST request
 
 const handler = async (req, res) => {
-  const { body } = req
-  let data = {}
-  let result
-  let addr
-  LOG_APPJS(`Method specified: ${body.method}`)
+  const { body } = req;
+  let data = {};
+  let result;
+  let addr;
+  utils.logVerbose(logLabel, `Method specified ${body.method}`);
   switch (body.method) {
     case 'GetBalance':
-      // [addr, ... ] = body.params;
-      addr = body.params[0]
+      addr = body.params[0];
       if (typeof addr === 'object') {
-        addr = JSON.stringify(addr)
+        addr = JSON.stringify(addr);
       }
-      LOG_APPJS(`Getting balance for ${addr}`)
+      utils.logVerbose(logLabel, `Getting balance for ${addr}`);
 
       try {
-        data = wallet.getBalance(addr)
+        data = wallet.getBalance(addr);
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     case 'GetNetworkId':
-      data = makeResponse(body.id, body.jsonrpc, 'Testnet', false)
-      res.status(200).send(data)
-      break
+      data = makeResponse(body.id, body.jsonrpc, 'Testnet', false);
+      res.status(200).send(data);
+      break;
     case 'GetSmartContractCode':
       try {
-        result = logic.processGetSmartContractCode(body.params, isPersistence)
-        data = result
+        result = logic.processGetDataFromContract(body.params, options.dataPath, 'code');
+        data = result;
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     case 'GetSmartContractState':
       try {
-        result = logic.processGetSmartContractState(body.params, isPersistence)
-        data = result
+        result = logic.processGetDataFromContract(body.params, options.dataPath, 'state');
+        data = result;
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     case 'GetSmartContractInit':
       try {
-        result = logic.processGetSmartContractInit(body.params, isPersistence)
-        data = result
+        result = logic.processGetDataFromContract(body.params, options.dataPath, 'init');
+        data = result;
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     case 'GetSmartContracts':
       try {
-        result = logic.processGetSmartContracts(body.params, argv.save)
-        data = result
+        result = logic.processGetSmartContracts(body.params, options.dataPath);
+        data = result;
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     case 'CreateTransaction':
       try {
-        const txnId = await logic.processCreateTxn(body.params, argv.save)
-        data = txnId
+        const txnId = await logic.processCreateTxn(body.params, options);
+        data = txnId;
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     case 'GetTransaction':
       try {
-        const obj = logic.processGetTransaction(body.params)
-        data = obj
+        const obj = logic.processGetTransaction(body.params);
+        data = obj;
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     case 'GetRecentTransactions':
       try {
-        const obj = logic.processGetRecentTransactions()
-        data = obj
+        const obj = logic.processGetRecentTransactions();
+        data = obj;
       } catch (err) {
-        data = err.message
-        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true))
-        break
+        data = err.message;
+        res.status(200).send(makeResponse(body.id, body.jsonrpc, data, true));
+        break;
       }
-      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false))
-      break
+      res.status(200).send(makeResponse(body.id, body.jsonrpc, data, false));
+      break;
     default:
-      data = { Error: 'Unsupported Method' }
-      res.status(404).send(data)
+      data = { Error: 'Unsupported Method' };
+      res.status(404).send(data);
   }
-  LOG_APPJS('Sending status')
-}
+  utils.logVerbose(logLabel, 'Sending response back to client');
+};
 
-expressjs.post('/', wrapAsync(handler))
+expressjs.post('/', wrapAsync(handler));
+
+// Function below handles the end of the session due to SIGINT. It will save
+// data files if the `-s` flag is toggled and will remove all files from the data directory
+process.on('SIGINT', function () {
+  utils.consolePrint("Gracefully shutting down from SIGINT (Ctrl-C)");
+
+  // If `save` is enabled, store files under the saved/ directory
+  if (options.save) {
+    console.log(`Save mode enabled. Extracting data now..`);
+    
+    const dir = config.savedFilesDir;
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+
+    // Saved files will be prefixed with the timestamp when the user decides to end the session
+    const timestamp = utils.getDateTimeString();
+    
+    const outputData = `${dir}${timestamp}`;
+    const targetFilePath = `${outputData}_data.json`;
+    utils.consolePrint(`Files will be saved at ${targetFilePath}`);
+
+    // Prepares Data to be exported
+    utils.consolePrint('Extracting data...');
+    const data = logic.exportData();
+    data.accounts = wallet.getAccounts();
+    utils.consolePrint(`[1/5] Transactions and account data extracted`);
+    data.states = utils.getDataFromDir(options.dataPath, 'state.json');
+    utils.consolePrint(`[2/5] Contract state data extracted`);
+    data.init = utils.getDataFromDir(options.dataPath, 'init.json');
+    utils.consolePrint(`[3/5] Contract init data extracted`);
+    data.codes = utils.getDataFromDir(options.dataPath, 'code.scilla');
+    utils.consolePrint(`[4/5] Contract code data extracted`);
+
+    // Writing to the final exported data file in JSON format
+    fs.writeFileSync(targetFilePath, JSON.stringify(data));
+    utils.consolePrint(`[5/5] Data file written to ${targetFilePath}`);
+
+    utils.consolePrint(`Save successful`)
+  }
+
+  // remove files from the db_path
+  rimraf.sync(`${options.dataPath}*`);
+  console.log(`Files from ${options.dataPath} removed. Shutting down now.`);
+  process.exit(0);  
+})
 
 module.exports = {
   expressjs,
   wallet,
-}
+};
