@@ -1,5 +1,12 @@
-## scilla-practical-workshop
+# scilla-practical-workshop
 
-### running scilla
-/build compiled scilla (https://github.com/Zilliqa/scilla.git)
+## build
+compiled scilla
+https://github.com/Zilliqa/scilla.git
+
+## kaya
+https://github.com/Zilliqa/kaya
+
+## practice
+sample smart contracts written in Scilla
 
