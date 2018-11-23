@@ -1,0 +1,291 @@
+(* Jyanken contract *)
+
+import ListUtils BoolUtils
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+library Jyanken
+
+let zero = Uint128 0
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+(* 0..rock, 1..scissors, 2..paper *)
+let rock = Uint256 0
+let scissors = Uint256 1
+let paper = Uint256 2
+
+let hands_rock =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr rock in
+      ret
+
+let hands_scissors =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr scissors in
+      ret
+
+let hands_paper =
+  fun (jnr : Uint256) =>
+      let ret = builtin eq jnr paper in
+      ret
+
+let check_hands =
+  fun (jnr : Uint256) =>
+    let rc = hands_rock jnr in
+    match rc with
+    | True =>
+        True
+    | False =>
+        let sc = hands_scissors jnr in
+        match sc with
+        | True =>
+            True
+        | False =>
+            let pp = hands_paper jnr in
+            match pp with
+            | True =>
+                True
+            | False =>
+                False
+            end
+        end
+    end
+
+(* hostHand == guestHand *)
+let checkDraw =
+  fun (p1 : Uint256) =>
+  fun (p2 : Uint256) =>
+      let ret = builtin eq p1 p2 in
+      ret
+
+(* player==0&&randam==1 *)
+(* player==1&&randam==2 *)
+(* player==2&&randam==0 *)
+let win1 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p rock in
+      let rd = builtin eq r scissors in
+      andb pl rd
+
+let win2 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p scissors in
+      let rd = builtin eq r paper in
+      andb pl rd
+
+let win3 =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+      let pl = builtin eq p paper in
+      let rd = builtin eq r rock in
+      andb pl rd
+
+let checkWin =
+  fun (p : Uint256) =>
+  fun (r : Uint256) =>
+    let w1 = win1 p r in
+    match w1 with
+    | True =>
+        True
+    | False =>
+        let w2 = win2 p r in
+        match w2 with
+        | True =>
+            True
+        | False =>
+            let w3 = win3 p r in
+            match w3 with
+            | True =>
+                True
+            | False =>
+                False
+            end
+        end
+    end
+
+let check_update =
+  fun (bs : Map ByStr20 Uint128) =>
+  fun (_sender : ByStr20) =>
+  fun (_amount : Uint128) =>
+    let c = builtin contains bs _sender in
+    match c with
+    | False =>
+        let bs1 = builtin put bs _sender _amount in
+        Some {Map ByStr20 Uint128} bs1
+    | True  =>
+        let res = builtin get bs _sender in
+        match res with
+        | None =>
+            Some {Map ByStr20 Uint128} bs
+        | Some v =>
+            let ta = builtin add v _amount in
+            let bs2 = builtin put bs _sender ta in
+            Some {Map ByStr20 Uint128} bs2
+        end
+    end
+
+let isOwner =
+    fun (_sender : ByStr20) =>
+    fun (_owner : ByStr20) =>
+        let ret = builtin eq _sender _owner in
+        ret
+
+(* result code *)
+let bad_hands_code  = Uint32 1
+let random_error_code  = Uint32 2
+let money_sent_code  = Int32 3
+let nothing_to_withdraw_code  = Int32 4
+let no_owner_code  = Int32 5
+
+let set_pause_code  = Int32 6
+let pause_jyanken_code  = Int32 7
+
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+contract Jyanken
+
+(owner    : ByStr20)
+
+field totalDeposit     : Uint128 = Uint128 0
+field pendingReturns : Map ByStr20 Uint128 = Emp ByStr20 Uint128
+field previousResult : Int32 = Int32 0
+field previousHand : Uint256 = Uint256 0
+field isPause : Bool = False
+
+transition playJyanken (_player : Uint256)
+
+    pause <- isPause;
+    match pause with
+    | False =>
+        (* error validation *)
+        is_p1Hands_ok = check_hands _player;
+        match is_p1Hands_ok with
+        | False =>
+            msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : bad_hands_code};
+            msgs = one_msg msg;
+            td <- totalDeposit;
+            td2 = builtin add td _amount;
+            totalDeposit := td2;
+            accept;
+            e = {_eventname : "bad hand!"; _pH : _player};
+            event e;
+            send msgs
+        | True =>
+            ph <- previousHand;
+            b <- & BLOCKNUMBER;
+            bph = builtin badd b ph;
+            h1 = builtin sha256hash bph;
+            h2 = builtin sha256hash _sender;
+            dis = builtin dist h1 h2;
+            uintDis = builtin to_uint256 dis;
+            match uintDis with
+            | None =>
+                msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : random_error_code};
+                msgs = one_msg msg;
+                send msgs
+            | Some hd =>
+                j = Uint256 3;
+                randomHand = builtin rem hd j;
+                isDraw = checkDraw _player randomHand;
+                match isDraw with
+                | True =>
+                    rs = Int32 0;
+                    msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+                    msgs = one_msg msg;
+                    previousResult := rs;
+                    previousHand := randomHand;
+                    td <- totalDeposit;
+                    td2 = builtin add td _amount;
+                    totalDeposit := td2;
+                    accept;
+                    e = {_eventname : "Result is draw!"; _pH : _player; _rH : randomHand};
+                    event e;
+                    send msgs
+                | False =>
+                    isWin = checkWin _player randomHand;
+                    match isWin with
+                    | False =>
+                        rs = Int32 2;
+                        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+                        msgs = one_msg msg;
+                        previousResult := rs;
+                        previousHand := randomHand;
+                        td <- totalDeposit;
+                        td2 = builtin add td _amount;
+                        totalDeposit := td2;
+                        accept;
+                        e = {_eventname : "Result is lose!"; _pH : _player; _rH : randomHand};
+                        event e;
+                        send msgs
+                    | True =>
+                        td <- totalDeposit;
+                        totalDeposit := zero;
+                        td2 = builtin add td _amount;
+                        prs <- pendingReturns;
+                        res = check_update prs _sender td2;
+                        match res with
+                        | Some bs1 =>
+                            pendingReturns := bs1;
+                            accept;
+                            rs = Int32 1;
+                            msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
+                            msgs = one_msg msg;
+                            previousResult := rs;
+                            previousHand := randomHand;
+                            e = {_eventname : "Result is win!"; _pH : _player; _rH : randomHand};
+                            event e;
+                            send msgs
+                        end
+                    end
+                end
+            end
+        end
+    | True =>
+        msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : pause_jyanken_code};
+        msgs = one_msg msg;
+        e = {_eventname : "pause game!"};
+        event e;
+        send msgs
+    end
+end
+
+transition pauseJyanken (_pause : Bool)
+    res = isOwner _sender owner;
+    match res with
+    | True  =>
+        isPause := _pause;
+        msg  = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : set_pause_code};
+        msgs = one_msg msg;
+        send msgs
+    | False =>
+        msg  = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : no_owner_code};
+        msgs = one_msg msg;
+        send msgs
+    end
+end
+
+transition Withdraw ()
+    prs <- pendingReturns;
+    pr = builtin get prs _sender;
+    match pr with
+    | None =>
+        msg  = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : nothing_to_withdraw_code};
+        msgs = one_msg msg;
+        send msgs
+    | Some v =>
+        prs1 = builtin remove prs _sender;
+        pendingReturns := prs1;
+        msg  = {_tag : "Main"; _recipient : _sender; _amount : v; code : money_sent_code};
+        msgs = one_msg msg;
+        send msgs
+    end
+end
