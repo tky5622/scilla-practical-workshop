@@ -23,7 +23,7 @@
 # oasis generated files
 setup.data
 setup.log
-bin
+# bin
 scilla
 *.install
 .merlin
