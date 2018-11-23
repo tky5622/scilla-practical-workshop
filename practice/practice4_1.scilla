@@ -70,8 +70,10 @@ field previousHand : Uint256 = Uint256 0
 
 field contractAddress : Option ByStr20 = None {ByStr20}
 
+
 (*Add set call contract address *)
 (*INSERT CODE HERE*)
+
 
 
 transition playJyanken (_player : Uint256)
@@ -102,6 +104,7 @@ transition playJyanken (_player : Uint256)
             j = Uint256 3;
             randomHand = builtin rem hd j;
 
+
             (*Add call contract transition *)
             (*INSERT CODE HERE*)
 
@@ -109,6 +112,7 @@ transition playJyanken (_player : Uint256)
         end
     end
 end
+
 
 (*Add callback transition *)
 (*INSERT CODE HERE*)

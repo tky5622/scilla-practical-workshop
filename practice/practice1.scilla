@@ -34,6 +34,7 @@ let hands_paper =
 
 let check_hands =
   fun (jnr : Uint256) =>
+
     (*Add player hand validation*)
     (*INSERT CODE HERE*)
 
@@ -72,6 +73,7 @@ let win3 =
 let checkWin =
   fun (p : Uint256) =>
   fun (r : Uint256) =>
+
     (*Add winning / losing check*)
     (*INSERT CODE HERE*)
 
@@ -101,10 +103,13 @@ transition playJyanken (_player : Uint256, _enemy: Uint256)
         event e;
         send msgs
     | True =>
+
+
         (*Add call of winning / losing check*)
         (*Add save result to field value*)
         (*Add an event and announce the result message*)
         (*INSERT CODE HERE*)
-        
+
+
     end
 end

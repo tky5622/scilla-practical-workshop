@@ -90,9 +90,10 @@ transition JyankenJudge (_player : Uint256, _enemy : Uint256)
     previousPlayerHand := _player;
     previousEnemyHand := _enemy;
 
-    
+
+
     (* Add call of winning / losing check & callback *)
     (*INSERT CODE HERE*)
-    
+
 
 end

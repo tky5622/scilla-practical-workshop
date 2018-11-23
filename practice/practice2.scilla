@@ -135,12 +135,14 @@ transition playJyanken (_player : Uint256)
         send msgs
     | True =>
 
+
         (*Add generate random hands*)
         (* e.g. solidity... uint256(block.blockhash(block.number-1)) % 3 *)
         (* e.g. scilla... hash to uint *)
         (* builtin dist h1 h2: The distance between ByStr32 h1 and ByStr32 h2. Returns Uint25 *)
         (* builtin sha256hash x : The SHA256 hash of value of x of type Any. Returns ByStr32 *)
         (*INSERT CODE HERE*)
+
 
         isDraw = checkDraw _player randomHand;
         match isDraw with

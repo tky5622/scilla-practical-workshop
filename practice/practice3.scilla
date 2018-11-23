@@ -144,8 +144,10 @@ transition playJyanken (_player : Uint256)
         msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; code : bad_hands_code};
         msgs = one_msg msg;
 
+
         (*Add confiscate the stake amount *)
         (*INSERT CODE HERE*)
+
 
         e = {_eventname : "bad hand!"; _pH : _player};
         event e;
@@ -174,9 +176,11 @@ transition playJyanken (_player : Uint256)
                 msgs = one_msg msg;
                 previousResult := rs;
                 previousHand := randomHand;
-                
+
+
                 (*Add confiscate the stake amount *)
                 (*INSERT CODE HERE*)
+
 
                 e = {_eventname : "Result is draw!"; _pH : _player; _rH : randomHand};
                 event e;
@@ -199,9 +203,11 @@ transition playJyanken (_player : Uint256)
                     send msgs
                 | True =>
 
+
                     (*Add get confiscated all amount *)
                     (*INSERT CODE HERE*)
-                    
+
+
                     rs = Int32 1;
                     msg = {_tag : "Main"; _recipient : _sender; _amount : Uint128 0; result : rs};
                     msgs = one_msg msg;
@@ -220,7 +226,10 @@ transition playJyanken (_player : Uint256)
 end
 
 transition Withdraw ()
+
+
     (*Add withdraw the amount offered by the player*)
     (*INSERT CODE HERE*)
+
 
 end
