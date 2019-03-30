@@ -1,0 +1,71 @@
+scilla_version 0
+
+library ADT
+
+type CommitType = 
+| Chat
+| Board
+
+type Commit =
+| Commit of Uint128 Uint128 CommitType
+
+type Error =
+| ShortOfMoney
+| IllegalAction
+let illegal_action = IllegalAction
+let shortOfMoney = ShortOfMoney
+
+let mk_error_event =
+  fun (err : Error) =>
+  let err_code = 
+    match err with
+    | ShortOfMoney  => Int32 -1
+    | IllegalAction => Int32 -2
+    end in
+  { _eventname : "ActionError" ; err_code : err_code }
+
+let createCommit = 
+  fun(favAmount: Uint128) =>
+  fun(commitType: CommitType) =>
+  Commit favAmount favAmount commitType 
+
+let list_sum = 
+  fun (ls : List Commit) => 
+  fun (acc : Uint128) =>
+  let iter =
+    fun (h : Commit) => 
+    fun (res : Uint128) =>
+      match h with
+      | Commit favAmount _ _ => 
+          builtin add favAmount acc
+      end
+  in
+  let rec_nat = @list_foldr Commit Uint128 in
+  rec_nat iter acc ls 
+
+contract ADT()
+field unEvalatedCommits : Map String List Commit = Emp String List Commit
+
+transition addVoteToCommit (favAmount: Uint128, commitType: CommitType, voterAddress:  ByStr32, commitId: String)
+  newCommit = Commit favAmount favAmount commitType;
+  prevCommitList <- unEvalatedCommits[commitId];
+  match prevCommitList with 
+    | Some prevList =>
+        new = Cons{Commit} newCommit prevList;
+        unEvalatedCommits[commitId] := new
+    | None =>
+        l = Nil {Commit}; 
+        new = Cons{Commit} newCommit l;
+        unEvalatedCommits[commitId] := new
+  end
+end
+
+transition countUnEvalCommits(commitId: String)
+  prevCommitList <- unEvalatedCommits[commitId];
+  match prevCommitList with 
+    | Some list => 
+          zero = Uint128 0;
+          sum = list_sum list zero
+    | None =>
+  end
+end
